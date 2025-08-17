@@ -21,7 +21,7 @@ services:
       - "traefik.http.routers.metabase.entrypoints=websecure"
       - "traefik.http.routers.metabase.tls=true"
       - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
-      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
+      - "traefik.http.services.metabase.loadbalancer.server.port=13000"
       # Fix 404 by ensuring paths are forwarded correctly:
       - "traefik.http.routers.metabase.middlewares=metabase-stripprefix"
       - "traefik.http.middlewares.metabase-stripprefix.stripprefix.prefixes=/"
