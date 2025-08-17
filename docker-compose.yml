@@ -21,12 +21,14 @@ services:
       - "traefik.http.routers.metabase.entrypoints=websecure"
       - "traefik.http.routers.metabase.tls=true"
       - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
-      - "traefik.http.services.metabase.loadbalancer.server.port=3000"  # Metabase's internal port
+      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
+      # Fix 404 by ensuring paths are forwarded correctly:
+      - "traefik.http.routers.metabase.middlewares=metabase-stripprefix"
+      - "traefik.http.middlewares.metabase-stripprefix.stripprefix.prefixes=/"
     networks:
-      - metanet1
-      - dokploy-network  # Attach to Traefik's network
+      - dokploy-network  # Must match Traefik's network
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail -I http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:3000"] # Attach to Traefik's network
       interval: 15s
       timeout: 5s
       retries: 5
