@@ -5,8 +5,9 @@ services:
     hostname: metabase
     volumes:
       - /dev/urandom:/dev/random:ro
-    ports:
-      - 13000:3000
+    # Remove direct port mapping (Traefik will handle this)
+    # ports:
+    #   - 13000:3000
     environment:
       MB_DB_TYPE: postgres
       MB_DB_DBNAME: metabaseappdb
@@ -14,13 +15,22 @@ services:
       MB_DB_USER: metabase
       MB_DB_PASS: mysecretpassword
       MB_DB_HOST: postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.metabase.rule=Host(`metabase.yourdomain.com`)"  # Replace with your domain
+      - "traefik.http.routers.metabase.entrypoints=websecure"
+      - "traefik.http.routers.metabase.tls=true"
+      - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
+      - "traefik.http.services.metabase.loadbalancer.server.port=3000"  # Metabase's internal port
     networks:
       - metanet1
+      - dokploy-network  # Attach to Traefik's network
     healthcheck:
-      test: curl --fail -I http://localhost:3000/api/health || exit 1
+      test: ["CMD-SHELL", "curl --fail -I http://localhost:3000/api/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
+
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -30,7 +40,49 @@ services:
       POSTGRES_DB: metabaseappdb
       POSTGRES_PASSWORD: mysecretpassword
     networks:
-      - metanet1
+      - metanet1  # Postgres doesn't need Traefik exposure
+
 networks:
   metanet1:
     driver: bridge
+  dokploy-network:
+    external: true  # Uses the existing Traefik network
+
+
+
+# services:
+#   metabase:
+#     image: metabase/metabase:latest
+#     container_name: metabase
+#     hostname: metabase
+#     volumes:
+#       - /dev/urandom:/dev/random:ro
+#     ports:
+#       - 13000:3000
+#     environment:
+#       MB_DB_TYPE: postgres
+#       MB_DB_DBNAME: metabaseappdb
+#       MB_DB_PORT: 5432
+#       MB_DB_USER: metabase
+#       MB_DB_PASS: mysecretpassword
+#       MB_DB_HOST: postgres
+#     networks:
+#       - metanet1
+#     healthcheck:
+#       test: curl --fail -I http://localhost:3000/api/health || exit 1
+#       interval: 15s
+#       timeout: 5s
+#       retries: 5
+#   postgres:
+#     image: postgres:latest
+#     container_name: postgres
+#     hostname: postgres
+#     environment:
+#       POSTGRES_USER: metabase
+#       POSTGRES_DB: metabaseappdb
+#       POSTGRES_PASSWORD: mysecretpassword
+#     networks:
+#       - metanet1
+# networks:
+#   metanet1:
+#     driver: bridge
