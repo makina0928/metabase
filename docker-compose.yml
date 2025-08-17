@@ -17,7 +17,7 @@ services:
       MB_DB_HOST: postgres
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.metabase.rule=Host(`metabase.yourdomain.com`)"  # Replace with your domain
+      - "traefik.http.routers.metabase.rule=Host(`metabase.zamdatalabs.com`)"  # Replace with your domain
       - "traefik.http.routers.metabase.entrypoints=websecure"
       - "traefik.http.routers.metabase.tls=true"
       - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
