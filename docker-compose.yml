@@ -19,7 +19,7 @@ services:
       - "traefik.http.routers.airflow.entrypoints=websecure"
       - "traefik.http.routers.airflow.tls=true"
       - "traefik.http.routers.airflow.tls.certresolver=letsencrypt"
-      - "traefik.http.services.airflow.loadbalancer.server.port=8080"
+      - "traefik.http.services.airflow.loadbalancer.server.port=8088"
     networks:
       - default
       - dokploy-network  # Attach to Traefik's network
