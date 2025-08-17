@@ -19,7 +19,7 @@ services:
       - "traefik.http.routers.metabase.entrypoints=websecure"
       - "traefik.http.routers.metabase.tls=true"
       - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
-      - "traefik.http.services.metabase.loadbalancer.server.port=3000"  # Metabase's internal port
+      - "traefik.http.services.metabase.loadbalancer.server.port=13000"  # Metabase's internal port
     networks:
       - metanet1
       - dokploy-network  # Attach to Traefik's network
