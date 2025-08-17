@@ -5,7 +5,8 @@ services:
     hostname: metabase
     volumes:
       - /dev/urandom:/dev/random:ro
-    # Removed ports (handled by Traefik)
+    ports:
+      - 3000:3000
     environment:
       MB_DB_TYPE: postgres
       MB_DB_DBNAME: metabaseappdb
@@ -13,22 +14,13 @@ services:
       MB_DB_USER: metabase
       MB_DB_PASS: mysecretpassword
       MB_DB_HOST: postgres
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.metabase.rule=Host(`metabase.zamdatalabs.com`)"
-      - "traefik.http.routers.metabase.entrypoints=websecure"
-      - "traefik.http.routers.metabase.tls=true"
-      - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
-      - "traefik.http.services.metabase.loadbalancer.server.port=13000"
     networks:
       - metanet1
-      - dokploy-network  # Add Traefik's network
     healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://localhost:3000/api/health || exit 1"]
+      test: curl --fail -I http://localhost:3000/api/health || exit 1
       interval: 15s
       timeout: 5s
       retries: 5
-
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -38,15 +30,7 @@ services:
       POSTGRES_DB: metabaseappdb
       POSTGRES_PASSWORD: mysecretpassword
     networks:
-      - metanet1  # Only needs private network
-    volumes:
-      - postgres-data:/var/lib/postgresql/data  # Add volume for persistence
-
+      - metanet1
 networks:
   metanet1:
     driver: bridge
-  dokploy-network:
-    external: true  # Use existing Traefik network
-
-volumes:
-  postgres-data:  # Define volume for PostgreSQL
