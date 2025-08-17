@@ -1,54 +1,62 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  metabase:
-    image: metabase/metabase:latest
-    container_name: metabase
-    labels:
-      - "traefik.enable=true"
-      # Use PathPrefix instead of Host for IP access
-      - "traefik.http.routers.metabase.rule=Host(metabase.zamdatalabs.com)"
-      # Use 'web' entrypoint for HTTP (port 80)
-      - "traefik.http.routers.metabase.entrypoints=web"
-      # Remove TLS since Let's Encrypt won't work with IP
-      # Keep direct port mapping as fallback
-      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
-      - "traefik.http.routers.metabase.entrypoints=websecure"
-      - "traefik.http.routers.metabase.tls=true"
-      - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
-    environment:
-      MB_DB_TYPE: postgres
-      MB_DB_DBNAME: metabaseappdb
-      MB_DB_PORT: 5432
-      MB_DB_USER: metabase
-      MB_DB_PASS: mysecretpassword
-      MB_DB_HOST: postgres
-    ports:
-      - "13000:3000"  # Keep direct access
-    networks:
-      - metanet1
-      - dokploy-network  # Must be connected to Traefik's network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: postgres
     environment:
       POSTGRES_USER: metabase
-      POSTGRES_DB: metabaseappdb
       POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: metabaseappdb
+    volumes:
+      - postgres:/var/lib/postgresql/data
     networks:
       - metanet1
+    restart: unless-stopped
+
+  metabase:
+    image: metabase/metabase:latest
+    container_name: metabase
+    # optional but harmless; keeps Java happy on some hosts
+    volumes:
+      - /dev/urandom:/dev/random:ro
+    environment:
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabaseappdb
+      MB_DB_USER: metabase
+      MB_DB_PASS: mysecretpassword
+      MB_DB_HOST: postgres
+      MB_DB_PORT: 5432
+      MB_SITE_URL: https://metabase.yourdomain.com   # change to your domain
+    depends_on:
+      - postgres
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=dokploy-network"      # tell Traefik which network to use
+      - "traefik.http.routers.metabase.rule=Host(`metabase.yourdomain.com`)"
+      - "traefik.http.routers.metabase.entrypoints=websecure"
+      - "traefik.http.routers.metabase.tls=true"
+      - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
+      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
+    networks:
+      - metanet1          # share with Postgres
+      - dokploy-network   # Traefik’s external network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsI http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
 
 networks:
   metanet1:
     driver: bridge
   dokploy-network:
-    external: true  # Uses existing Traefik network
+    external: true   # pre-created Traefik network
+
+volumes:
+  postgres:
+
 
 
 
