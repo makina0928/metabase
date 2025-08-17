@@ -1,46 +1,71 @@
+version: "3.9"
+
+x-common-env: &common-env
+  MB_DB_TYPE: postgres
+  MB_DB_DBNAME: ${MB_DB_DBNAME}
+  MB_DB_PORT: ${MB_DB_PORT}
+  MB_DB_USER: ${MB_DB_USER}
+  MB_DB_PASS: ${MB_DB_PASS}
+  MB_DB_HOST: ${MB_DB_HOST}
+  # Optional but recommended:
+  MB_SITE_URL: ${MB_SITE_URL}              # e.g. https://metabase.yourdomain.com
+  # MB_ENCRYPTION_SECRET_KEY: ${MB_ENCRYPTION_SECRET_KEY}  # set for field value encryption
+
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${MB_DB_USER}
+      POSTGRES_DB: ${MB_DB_DBNAME}
+      POSTGRES_PASSWORD: ${MB_DB_PASS}
+    volumes:
+      - metabase-postgres-data:/var/lib/postgresql/data
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${MB_DB_USER} -d ${MB_DB_DBNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: always
+
   metabase:
-    image: metabase/metabase:latest
+    image: ${METABASE_IMAGE:-metabase/metabase:v0.49}
+    environment:
+      <<: *common-env
+    # Don’t publish host ports; expose via Traefik on dokploy-network
+    volumes:
+      - /dev/urandom:/dev/random:ro
+      # - ./plugins:/plugins   # uncomment if you use custom drivers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail -s -I http://localhost:3000/api/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: always
+    networks:
+      - default
+      - dokploy-network
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.metabase.rule=Host(`metabase.yourdomain.com`) && PathPrefix(`/`)"
+      - "traefik.docker.network=dokploy-network"
+      - "traefik.http.routers.metabase.rule=Host(`${METABASE_HOST}`)"           # e.g. metabase.yourdomain.com
       - "traefik.http.routers.metabase.entrypoints=websecure"
       - "traefik.http.routers.metabase.tls=true"
       - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
       - "traefik.http.services.metabase.loadbalancer.server.port=3000"
-    networks:
-      - dokploy-network # Correct port
-    environment:
-      MB_DB_TYPE: postgres
-      MB_DB_DBNAME: metabaseappdb
-      MB_DB_PORT: 5432
-      MB_DB_USER: metabase
-      MB_DB_PASS: ${METABASE_DB_PASSWORD:-mysecretpassword}  # Use env var for security
-      MB_DB_HOST: postgres
-    healthcheck:
-      test: ["CMD-SHELL", "curl --fail http://localhost:3000/api/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-
-  postgres:
-    image: postgres:latest
-    container_name: postgres
-    hostname: postgres
-    environment:
-      POSTGRES_USER: metabase
-      POSTGRES_DB: metabaseappdb
-      POSTGRES_PASSWORD: ${METABASE_DB_PASSWORD:-mysecretpassword}  # Match Metabase's password
-
-    volumes:
-      - postgres-data:/var/lib/postgresql/data  # Persist data
 
 networks:
   dokploy-network:
-    external: true  # Reuse Traefik's existing network
+    external: true   # Traefik's network created by Dokploy
 
 volumes:
-  postgres-data:  # Named volume for PostgreSQL
+  metabase-postgres-data:
 
 
 
