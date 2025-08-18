@@ -1,7 +1,7 @@
 services:
   metabase:
     image: metabase/metabase:latest
-    container_name: metabase
+    container_name: metabase-git
     hostname: metabase
     volumes:
       - /dev/urandom:/dev/random:ro
