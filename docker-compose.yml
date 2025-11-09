@@ -5,8 +5,6 @@ services:
     hostname: metabase
     volumes:
       - /dev/urandom:/dev/random:ro
-    ports:
-      - 13000:3000
     environment:
       MB_DB_TYPE: postgres
       MB_DB_DBNAME: metabaseappdb
@@ -14,8 +12,30 @@ services:
       MB_DB_USER: metabase
       MB_DB_PASS: mysecretpassword
       MB_DB_HOST: postgres
+    # Optional: override Metabase site URL for correct links
+      MB_SITE_URL: https://bi.zamdatalabs.com
+
     networks:
-      - metanet1
+      - dokploy-network      
+      - metanet1             
+
+    labels:
+      - "traefik.enable=true"
+
+      # Secure (HTTPS) route
+      - "traefik.http.routers.metabase.rule=Host(`bi.zamdatalabs.com`)"
+      - "traefik.http.routers.metabase.entrypoints=websecure"
+      - "traefik.http.routers.metabase.tls.certresolver=letsencrypt"
+
+      # HTTP → HTTPS redirect
+      - "traefik.http.routers.metabase-redirect.entrypoints=web"
+      - "traefik.http.routers.metabase-redirect.rule=Host(`bi.zamdatalabs.com`)"
+      - "traefik.http.routers.metabase-redirect.middlewares=redirect-to-https@docker"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+      # Internal Metabase port
+      - "traefik.http.services.metabase.loadbalancer.server.port=3000"
+
     healthcheck:
       test: curl --fail -I http://localhost:3000/api/health || exit 1
       interval: 15s
@@ -32,6 +52,13 @@ services:
       POSTGRES_PASSWORD: mysecretpassword
     networks:
       - metanet1
+
+# ----------------------------
+# Networks
+# ----------------------------
 networks:
   metanet1:
     driver: bridge
+
+  dokploy-network:
+    external: true   
