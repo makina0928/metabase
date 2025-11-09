@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   metabase:
     image: metabase/metabase:latest
@@ -5,19 +7,19 @@ services:
     hostname: metabase
     volumes:
       - /dev/urandom:/dev/random:ro
+    env_file:
+      - .env
     environment:
       MB_DB_TYPE: postgres
       MB_DB_DBNAME: metabaseappdb
       MB_DB_PORT: 5432
-      MB_DB_USER: metabase
-      MB_DB_PASS: mysecretpassword
+      MB_DB_USER: ${MB_DB_USER}
+      MB_DB_PASS: ${MB_DB_PASS}
       MB_DB_HOST: postgres
-    # Optional: override Metabase site URL for correct links
       MB_SITE_URL: https://bi.zamdatalabs.com
-
     networks:
-      - dokploy-network      
-      - metanet1             
+      - dokploy-network
+      - metanet1
 
     labels:
       - "traefik.enable=true"
@@ -41,15 +43,17 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-  
+
   postgres:
     image: postgres:latest
     container_name: postgres-git
     hostname: postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: metabase
+      POSTGRES_USER: ${MB_DB_USER}
       POSTGRES_DB: metabaseappdb
-      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     networks:
       - metanet1
 
@@ -59,6 +63,5 @@ services:
 networks:
   metanet1:
     driver: bridge
-
   dokploy-network:
-    external: true   
+    external: true
